@@ -5,38 +5,31 @@ def solve_puzzle_bfs(puzzle, goal_puzzle):
     """Breadth First Search - explores all states level by level"""
     start_time = time.time()
     
-    open_list = []
-    closed_set = {}
+    open_list = [puzzle]
+    closed_set = {puzzle.to_string()}
     goal_mapping = Puzzle.get_matrix_mapping(goal_puzzle.matrix)
-    cur_puzzle = puzzle
     
-    while not goal_puzzle.is_equal_to_puzzle(cur_puzzle):
-        closed_set[cur_puzzle.to_string()] = 1
+    while open_list:
+        cur_puzzle = open_list.pop(0)
         
-        neighboring_states = cur_puzzle.generate_neighbors(goal_mapping)
-        for neighbor in neighboring_states:
-            # Only explore new states
-            if neighbor.to_string() not in closed_set:
-                neighbor.came_from = cur_puzzle
-                open_list.append(neighbor)
-        
-        # Check if we have any states to explore
-        if not open_list:
-            # No solution found
-            end_time = time.time()
+        if goal_puzzle.is_equal_to_puzzle(cur_puzzle):
             return {
-                'solution_puzzle': None,
-                'runtime_ms': (end_time - start_time) * 1000,
-                'max_puzzles_in_memory': len(closed_set)
+                'solution_puzzle': cur_puzzle,
+                'runtime_ms': (time.time() - start_time) * 1000,
+                'max_puzzles_in_memory': len(closed_set) + len(open_list)
             }
         
-        cur_puzzle = open_list.pop(0)
+        for neighbor in cur_puzzle.generate_neighbors(goal_mapping):
+            neighbor_str = neighbor.to_string()
+            if neighbor_str not in closed_set:
+                closed_set.add(neighbor_str)
+                neighbor.came_from = cur_puzzle
+                open_list.append(neighbor)
     
-    end_time = time.time()
     return {
-        'solution_puzzle': cur_puzzle,
-        'runtime_ms': (end_time - start_time) * 1000,
-        'max_puzzles_in_memory': len(closed_set) + len(open_list)
+        'solution_puzzle': None,
+        'runtime_ms': (time.time() - start_time) * 1000,
+        'max_puzzles_in_memory': len(closed_set)
     }
 
 def priority_enqueue(open_list, puzzle, cost):
@@ -52,66 +45,51 @@ def solve_puzzle_astar(puzzle, goal_puzzle):
     """A* algorithm - uses both cost from start (g) and heuristic (h)"""
     start_time = time.time()
     
-    open_list = []
-    closed_set = {}
     goal_mapping = Puzzle.get_matrix_mapping(goal_puzzle.matrix)
     puzzle.update_manhattan_sum(goal_mapping)
-    priority_enqueue(open_list, puzzle, puzzle.manhattan_sum)
     
-    cur_puzzle = puzzle
-    while not goal_puzzle.is_equal_to_puzzle(cur_puzzle):
-        closed_set[cur_puzzle.to_string()] = 1
+    open_list = []
+    priority_enqueue(open_list, puzzle, puzzle.manhattan_sum)
+    closed_set = set()
+    
+    while open_list:
+        cur_puzzle = open_list.pop(0)['puzzle']
         
-        neighboring_states = cur_puzzle.generate_neighbors(goal_mapping)
-        cost_to_neighbor = cur_puzzle.cost_from_start + 1
-        
-        for neighbor in neighboring_states:
-            # If on closed list, don't explore that path again
-            if neighbor.to_string() in closed_set:
-                continue
-            
-            # If on the open list, check if we found a better way
-            open_neighbor_index = -1
-            for idx, item in enumerate(open_list):
-                if item['puzzle'].is_equal_to_puzzle(neighbor):
-                    open_neighbor_index = idx
-                    break
-            
-            if open_neighbor_index != -1:
-                puzzle_to_maybe_update = open_list[open_neighbor_index]['puzzle']
-                if puzzle_to_maybe_update.cost_from_start > cost_to_neighbor:
-                    # Remove from queue to re-enqueue with new cost
-                    open_list.pop(open_neighbor_index)
-                    
-                    neighbor.came_from = cur_puzzle
-                    neighbor.update_manhattan_sum(goal_mapping)
-                    neighbor.cost_from_start = cost_to_neighbor
-                    priority_enqueue(open_list, neighbor, neighbor.manhattan_sum + neighbor.cost_from_start)
-            else:
-                # Add to open list for further exploration
-                neighbor.came_from = cur_puzzle
-                neighbor.update_manhattan_sum(goal_mapping)
-                neighbor.cost_from_start = cost_to_neighbor
-                priority_enqueue(open_list, neighbor, neighbor.manhattan_sum + neighbor.cost_from_start)
-        
-        # Check if we have any states to explore
-        if not open_list:
-            # No solution found
-            end_time = time.time()
+        if goal_puzzle.is_equal_to_puzzle(cur_puzzle):
             return {
-                'solution_puzzle': None,
-                'runtime_ms': (end_time - start_time) * 1000,
-                'max_puzzles_in_memory': len(closed_set)
+                'solution_puzzle': cur_puzzle,
+                'runtime_ms': (time.time() - start_time) * 1000,
+                'max_puzzles_in_memory': len(closed_set) + len(open_list)
             }
         
-        # Get front of queue/lowest cost un-explored puzzle state
-        cur_puzzle = open_list.pop(0)['puzzle']
+        cur_str = cur_puzzle.to_string()
+        if cur_str in closed_set:
+            continue
+        closed_set.add(cur_str)
+        
+        cost_to_neighbor = cur_puzzle.cost_from_start + 1
+        
+        for neighbor in cur_puzzle.generate_neighbors(goal_mapping):
+            neighbor_str = neighbor.to_string()
+            if neighbor_str in closed_set:
+                continue
+            
+            # Check if already in open list with higher cost
+            for idx, item in enumerate(open_list):
+                if item['puzzle'].is_equal_to_puzzle(neighbor):
+                    if item['puzzle'].cost_from_start > cost_to_neighbor:
+                        open_list.pop(idx)
+                    else:
+                        break
+            else:
+                neighbor.came_from = cur_puzzle
+                neighbor.cost_from_start = cost_to_neighbor
+                priority_enqueue(open_list, neighbor, neighbor.manhattan_sum + neighbor.cost_from_start)
     
-    end_time = time.time()
     return {
-        'solution_puzzle': cur_puzzle,
-        'runtime_ms': (end_time - start_time) * 1000,
-        'max_puzzles_in_memory': len(closed_set) + len(open_list)
+        'solution_puzzle': None,
+        'runtime_ms': (time.time() - start_time) * 1000,
+        'max_puzzles_in_memory': len(closed_set)
     }
 
 
@@ -119,54 +97,37 @@ def solve_puzzle_gbfs(puzzle, goal_puzzle):
     """Greedy Best-First Search - uses only heuristic (h), ignores cost"""
     start_time = time.time()
     
-    open_list = []
-    closed_set = {}
     goal_mapping = Puzzle.get_matrix_mapping(goal_puzzle.matrix)
     puzzle.update_manhattan_sum(goal_mapping)
-    priority_enqueue(open_list, puzzle, puzzle.manhattan_sum)
     
-    cur_puzzle = puzzle
-    while not goal_puzzle.is_equal_to_puzzle(cur_puzzle):
-        closed_set[cur_puzzle.to_string()] = 1
+    open_list = []
+    priority_enqueue(open_list, puzzle, puzzle.manhattan_sum)
+    closed_set = set()
+    
+    while open_list:
+        cur_puzzle = open_list.pop(0)['puzzle']
         
-        neighboring_states = cur_puzzle.generate_neighbors(goal_mapping)
-        
-        for neighbor in neighboring_states:
-            # If on closed list, don't explore that path again
-            if neighbor.to_string() in closed_set:
-                continue
-            
-            # Check if already in open list
-            already_in_open = False
-            for item in open_list:
-                if item['puzzle'].is_equal_to_puzzle(neighbor):
-                    already_in_open = True
-                    break
-            
-            if not already_in_open:
-                neighbor.came_from = cur_puzzle
-                neighbor.update_manhattan_sum(goal_mapping)
-                # GBFS uses only heuristic, not cost from start
-                priority_enqueue(open_list, neighbor, neighbor.manhattan_sum)
-        
-        # Check if we have any states to explore
-        if not open_list:
-            # No solution found
-            end_time = time.time()
+        if goal_puzzle.is_equal_to_puzzle(cur_puzzle):
             return {
-                'solution_puzzle': None,
-                'runtime_ms': (end_time - start_time) * 1000,
-                'max_puzzles_in_memory': len(closed_set)
+                'solution_puzzle': cur_puzzle,
+                'runtime_ms': (time.time() - start_time) * 1000,
+                'max_puzzles_in_memory': len(closed_set) + len(open_list)
             }
         
-        # Get front of queue/lowest heuristic value
-        cur_puzzle = open_list.pop(0)['puzzle']
+        cur_str = cur_puzzle.to_string()
+        if cur_str in closed_set:
+            continue
+        closed_set.add(cur_str)
+        
+        for neighbor in cur_puzzle.generate_neighbors(goal_mapping):
+            if neighbor.to_string() not in closed_set:
+                neighbor.came_from = cur_puzzle
+                priority_enqueue(open_list, neighbor, neighbor.manhattan_sum)
     
-    end_time = time.time()
     return {
-        'solution_puzzle': cur_puzzle,
-        'runtime_ms': (end_time - start_time) * 1000,
-        'max_puzzles_in_memory': len(closed_set) + len(open_list)
+        'solution_puzzle': None,
+        'runtime_ms': (time.time() - start_time) * 1000,
+        'max_puzzles_in_memory': len(closed_set)
     }
 
 # Direction mapping for building solution moves
@@ -180,17 +141,16 @@ DIRECTION_NAMES = {
 
 def get_solution_moves(solution_puzzle):
     """Build move list from puzzle state working backwards"""
-    if solution_puzzle is None:
+    if not solution_puzzle:
         return []
     
-    solution_moves = []
+    moves = []
     current = solution_puzzle
     
     while current and current.last_slide_direction != SlideDirection.INITIAL:
-        solution_moves.append(DIRECTION_NAMES[current.last_slide_direction])
+        moves.append(DIRECTION_NAMES[current.last_slide_direction])
         current = current.came_from
     
-    # Started from end to finish, so reverse moves
-    solution_moves.reverse()
-    return solution_moves
+    moves.reverse()
+    return moves
 

@@ -34,11 +34,10 @@ class SlidingPuzzleSolver:
         self.border_color = "#333333"
         self.text_color = "#FFFFFF"
         
-        # Simple color palette for tiles
+        # Simplified color palette for tiles (8 colors is enough for most puzzles)
         self.tile_colors = [
-            "#3498DB", "#E74C3C", "#2ECC71", "#F39C12", "#9B59B6",
-            "#1ABC9C", "#E67E22", "#34495E", "#16A085", "#C0392B",
-            "#27AE60", "#2980B9", "#8E44AD", "#F1C40F", "#D35400"
+            "#3498DB", "#E74C3C", "#2ECC71", "#F39C12", 
+            "#9B59B6", "#1ABC9C", "#E67E22", "#34495E"
         ]
         
         self.setup_ui()
@@ -170,17 +169,6 @@ class SlidingPuzzleSolver:
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=3)
     
-    def update_dimension_labels(self):
-        """Update the dimension labels when sliders change"""
-        self.row_label.config(text=str(int(self.row_var.get())))
-        self.col_label.config(text=str(int(self.col_var.get())))
-    
-    def get_tile_color(self, value):
-        """Get color for tile based on its value"""
-        if value == 0:
-            return self.blank_color
-        return self.tile_colors[(value - 1) % len(self.tile_colors)]
-    
     def apply_dimensions(self):
         """Apply new puzzle dimensions"""
         if self.animating:
@@ -210,6 +198,17 @@ class SlidingPuzzleSolver:
         self.cols = new_cols
         self.reset_puzzle()
         self.status_var.set(f"Puzzle dimensions changed to {self.rows}x{self.cols}")
+    
+    def update_dimension_labels(self):
+        """Update the dimension labels when sliders change"""
+        self.row_label.config(text=str(int(self.row_var.get())))
+        self.col_label.config(text=str(int(self.col_var.get())))
+    
+    def get_tile_color(self, value):
+        """Get color for tile based on its value"""
+        if value == 0:
+            return self.blank_color
+        return self.tile_colors[(value - 1) % len(self.tile_colors)]
     
     def reset_puzzle(self):
         """Reset puzzle to goal state"""

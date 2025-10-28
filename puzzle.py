@@ -26,16 +26,10 @@ class Puzzle:
                     if self.matrix[row_idx][col_idx] == 0:
                         self.blank_row = row_idx
                         self.blank_col = col_idx
+                        break
         else:
             # Fill matrix with default goal state (in order tiles)
-            self.matrix = []
-            value = 1
-            for row in range(rows):
-                row_data = []
-                for col in range(cols):
-                    row_data.append(value)
-                    value += 1
-                self.matrix.append(row_data)
+            self.matrix = [[col + row * cols + 1 for col in range(cols)] for row in range(rows)]
             # Set last tile as blank (0)
             self.matrix[rows - 1][cols - 1] = 0
             self.blank_row = rows - 1
@@ -63,34 +57,21 @@ class Puzzle:
                 if matrix[row][col] == 0:
                     puzzle.blank_row = row
                     puzzle.blank_col = col
+                    return puzzle
         return puzzle
     
     @staticmethod
     def generate_random_puzzle(rows, cols, solvable):
         """Returns random puzzle with defined solvability"""
-        values = list(range(1, rows * cols))
-        values.append(0)
+        values = list(range(rows * cols))
         
-        puzzle_arr = []
-        if solvable:
-            while True:
-                puzzle_arr = Puzzle.shuffle_array(values[:])
-                if Puzzle.is_puzzle_solvable_1d(puzzle_arr, rows, cols):
-                    break
-        else:
-            while True:
-                puzzle_arr = Puzzle.shuffle_array(values[:])
-                if not Puzzle.is_puzzle_solvable_1d(puzzle_arr, rows, cols):
-                    break
+        while True:
+            random.shuffle(values)
+            if Puzzle.is_puzzle_solvable_1d(values, rows, cols) == solvable:
+                break
         
         # Turn 1D array into puzzle matrix
-        puzzle_matrix = [[0] * cols for _ in range(rows)]
-        for row in range(rows):
-            for col in range(cols):
-                idx = row * cols + col
-                puzzle_matrix[row][col] = puzzle_arr[idx]
-        
-        return puzzle_matrix
+        return [[values[row * cols + col] for col in range(cols)] for row in range(rows)]
     
     def can_slide_left(self):
         return self.blank_col > 0
@@ -134,24 +115,22 @@ class Puzzle:
     
     def update_manhattan_sum(self, goal_mapping):
         """Updates manhattan sum for this puzzle state"""
-        manhattan_sum = 0
-        for row in range(self.rows):
-            for col in range(self.cols):
-                value = self.matrix[row][col]
-                if value != 0:
-                    goal_pos = goal_mapping[value]
-                    manhattan_sum += abs(row - goal_pos['row']) + abs(col - goal_pos['col'])
-        self.manhattan_sum = manhattan_sum
+        self.manhattan_sum = sum(
+            abs(row - goal_mapping[self.matrix[row][col]]['row']) + 
+            abs(col - goal_mapping[self.matrix[row][col]]['col'])
+            for row in range(self.rows)
+            for col in range(self.cols)
+            if self.matrix[row][col] != 0
+        )
     
     @staticmethod
     def get_matrix_mapping(matrix):
         """Map goal state's (row, col) for each tile value"""
-        mapping = {}
-        for row in range(len(matrix)):
-            for col in range(len(matrix[0])):
-                value = matrix[row][col]
-                mapping[value] = {'row': row, 'col': col}
-        return mapping
+        return {
+            matrix[row][col]: {'row': row, 'col': col}
+            for row in range(len(matrix))
+            for col in range(len(matrix[0]))
+        }
     
     def generate_neighbors(self, goal_mapping=None):
         """Generate all valid neighboring puzzle states"""
@@ -163,6 +142,8 @@ class Puzzle:
             neighbor.last_slide_direction = SlideDirection.UP
             neighbor.came_from = self
             neighbor.cost_from_start = self.cost_from_start + 1
+            if goal_mapping:
+                neighbor.update_manhattan_sum(goal_mapping)
             neighbors.append(neighbor)
         
         if self.can_slide_down() and self.last_slide_direction != SlideDirection.UP:
@@ -171,6 +152,8 @@ class Puzzle:
             neighbor.last_slide_direction = SlideDirection.DOWN
             neighbor.came_from = self
             neighbor.cost_from_start = self.cost_from_start + 1
+            if goal_mapping:
+                neighbor.update_manhattan_sum(goal_mapping)
             neighbors.append(neighbor)
         
         if self.can_slide_left() and self.last_slide_direction != SlideDirection.RIGHT:
@@ -179,6 +162,8 @@ class Puzzle:
             neighbor.last_slide_direction = SlideDirection.LEFT
             neighbor.came_from = self
             neighbor.cost_from_start = self.cost_from_start + 1
+            if goal_mapping:
+                neighbor.update_manhattan_sum(goal_mapping)
             neighbors.append(neighbor)
         
         if self.can_slide_right() and self.last_slide_direction != SlideDirection.LEFT:
@@ -187,21 +172,19 @@ class Puzzle:
             neighbor.last_slide_direction = SlideDirection.RIGHT
             neighbor.came_from = self
             neighbor.cost_from_start = self.cost_from_start + 1
-            neighbors.append(neighbor)
-        
-        if goal_mapping:
-            for neighbor in neighbors:
+            if goal_mapping:
                 neighbor.update_manhattan_sum(goal_mapping)
+            neighbors.append(neighbor)
         
         return neighbors
     
     def is_equal_to_puzzle(self, puzzle):
         """Check if two puzzles have the same state"""
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.matrix[row][col] != puzzle.matrix[row][col]:
-                    return False
-        return True
+        return all(
+            self.matrix[row][col] == puzzle.matrix[row][col]
+            for row in range(self.rows)
+            for col in range(self.cols)
+        )
     
     @staticmethod
     def is_puzzle_solvable_1d(arr, rows, cols):
@@ -225,22 +208,8 @@ class Puzzle:
     @staticmethod
     def is_puzzle_solvable_2d(matrix):
         """Check if 2D puzzle matrix is solvable"""
-        arr = []
-        blank_row = None
-        for row in range(len(matrix)):
-            for col in range(len(matrix[0])):
-                arr.append(matrix[row][col])
-                if matrix[row][col] == 0:
-                    blank_row = row
+        arr = [val for row in matrix for val in row]
         return Puzzle.is_puzzle_solvable_1d(arr, len(matrix), len(matrix[0]))
-    
-    @staticmethod
-    def shuffle_array(array):
-        """Fisher-Yates shuffle"""
-        for i in range(len(array) - 1, 0, -1):
-            j = random.randint(0, i)
-            array[i], array[j] = array[j], array[i]
-        return array
     
     def to_string(self):
         """Convert matrix to string for hashing"""
