@@ -421,7 +421,7 @@ class SlidingPuzzleSolver:
                 f"Solving {self.rows}x{self.cols} ({total_tiles} tiles) may take very long.\n\n"
                 f"Algorithm Performance:\n"
                 f"• BFS - Slowest, most memory (not recommended > 5x5)\n"
-                f"• A* - Fast optimal, solution (not recommended > 5x5)\n"
+                f"• A* - Fast optimal solution (not recommended > 5x5)\n"
                 f"• GBFS - Fastest but non optimal (usable up to 7x7)\n\n"
                 "Continue?")
             if not result:
