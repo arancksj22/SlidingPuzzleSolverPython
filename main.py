@@ -433,7 +433,7 @@ class SlidingPuzzleSolver:
         
         if current_solvable != goal_solvable:
             messagebox.showerror("Unsolvable", 
-                "This puzzle configuration is unsolvable!\n"
+                "This puzzle configuration is unsolvable\n"
                 "Start and goal states have different solvability.")
             return
         
