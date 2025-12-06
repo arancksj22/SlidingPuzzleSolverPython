@@ -432,7 +432,7 @@ class SlidingPuzzleSolver:
         goal_solvable = Puzzle.is_puzzle_solvable_2d(self.goal_puzzle.matrix)
         
         if current_solvable != goal_solvable:
-            messagebox.showerror("Unsolvable.", 
+            messagebox.showerror("Unsolvable...", 
                 "This puzzle configuration is unsolvable!\n"
                 "Start and goal states have different solvability.")
             return
