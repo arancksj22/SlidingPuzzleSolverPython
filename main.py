@@ -432,12 +432,12 @@ class SlidingPuzzleSolver:
         goal_solvable = Puzzle.is_puzzle_solvable_2d(self.goal_puzzle.matrix)
         
         if current_solvable != goal_solvable:
-            messagebox.showerror("Unsolvable...", 
+            messagebox.showerror("Unsolvable...git commit --allow-empty --date="2025-12-05 11:30" -m "edit"", 
                 "This puzzle configuration is unsolvable!\n"
                 "Start and goal states have different solvability.")
             return
         
-        self.status_var.set("Solving puzzle...")
+        self.status_var.set("Solving puzzle..")
         self.animating = True
         self.root.update()
         
