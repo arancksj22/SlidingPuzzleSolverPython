@@ -437,7 +437,7 @@ class SlidingPuzzleSolver:
                 "Start and goal states have different solvability.")
             return
         
-        self.status_var.set("Solving puzzle...")
+        self.status_var.set("Solving puzzle.....")
         self.animating = True
         self.root.update()
         
